@@ -3,23 +3,42 @@ from django.contrib.auth.models import User
 from django.db.models import Sum
 
 
-class Author(models.Model): #нужно добавить рейтинг
+class Author(models.Model):
     authorUser = models.OneToOneField(User, on_delete=models.CASCADE)
 
     ratingAuthor = models.SmallIntegerField(default=0)
+    # def update_rating(self):
+    #     postRat = self.post_set.aggregate(posRating=Sum('rating'))
+    #     pRat = 0
+    #     pRat += postRat.get('postRating')
+    #     commentRat = self.authorUser.comment_set.aggregate(commentRating=Sum('rating'))
+    #     cRat = 0
+    #     cRat += commentRat.get('commentRating')
+    #
+    #     self.ratingAuthor = pRat * 3 + cRat
+    #     self.save()
 
     def update_rating(self):
-        postRat = self.post_set.aggregate(posRating=Sum('rating'))
-        pRat = 0
-        pRat += postRat.get('postRating')
+        post_rating = self.post_set.aggregate(Sum('rating')).get('rating__sum')
+        if post_rating is None:
+            post_rating = 0
 
-        commentRat = self.authorUser.comment_set.aggregate(commentRating=Sum('rating'))
-        cRat = 0
-        cRat += commentRat.get('commentRating')
 
-        self.ratingAuthor = pRat * 3 + cRat
+        comment_rating = self.authorUser.comment_set.aggregate(Sum('rating')).get('rating__sum')
+        if comment_rating is None:
+            comment_rating = 0
+
+
+
+        compost_rating = 0
+        for post in self.post_set.all():
+            rating = post.comment_set.aggregate(Sum('rating')).get('rating__sum')
+            if rating is None:
+                rating = 0
+            compost_rating += rating
+
+        self.ratingAuthor = post_rating * 3 + comment_rating + compost_rating
         self.save()
-
 
 
 class Category(models.Model):
